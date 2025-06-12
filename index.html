@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Azure AI Chatbot</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .chat-container {
+            width: 90%;
+            max-width: 800px;
+            height: 90vh;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #0078d4, #106ebe);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        .chat-header h1 {
+            font-size: 1.5em;
+            font-weight: 600;
+        }
+
+        .status-indicator {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            width: 12px;
+            height: 12px;
+            background: #4CAF50;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .config-section {
+            padding: 15px 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .config-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+
+        .config-input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 0.9em;
+        }
+
+        .config-btn {
+            padding: 8px 16px;
+            background: #0078d4;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: background 0.3s;
+        }
+
+        .config-btn:hover {
+            background: #106ebe;
+        }
+
+        .toggle-config {
+            background: transparent;
+            color: #0078d4;
+            text-decoration: underline;
+            cursor: pointer;
+            font-size: 0.85em;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            animation: messageSlide 0.3s ease-out;
+            position: relative;
+        }
+
+        @keyframes messageSlide {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .user-message {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 5px;
+        }
+
+        .bot-message {
+            background: #f1f3f4;
+            color: #333;
+            align-self: flex-start;
+            border-bottom-left-radius: 5px;
+            border: 1px solid #e8eaed;
+        }
+
+        .loading-message {
+            background: #f1f3f4;
+            color: #666;
+            align-self: flex-start;
+            border-bottom-left-radius: 5px;
+            border: 1px solid #e8eaed;
+        }
+
+        .loading-dots {
+            display: inline-block;
+        }
+
+        .loading-dots::after {
+            content: '...';
+            animation: loading 1.5s infinite;
+        }
+
+        @keyframes loading {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+
+        .error-message {
+            background: #ffebee;
+            color: #c62828;
+            border: 1px solid #ffcdd2;
+            align-self: flex-start;
+            border-bottom-left-radius: 5px;
+        }
+
+        .chat-input-container {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e9ecef;
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 25px;
+            font-size: 1em;
+            resize: none;
+            min-height: 20px;
+            max-height: 100px;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: #0078d4;
+            box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.1);
+        }
+
+        .send-button {
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #0078d4, #106ebe);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: transform 0.2s, box-shadow 0.2s;
+            min-width: 60px;
+        }
+
+        .send-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 120, 212, 0.3);
+        }
+
+        .send-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .config-hidden {
+            display: none;
+        }
+
+        @media (max-width: 600px) {
+            .chat-container {
+                width: 95%;
+                height: 95vh;
+                border-radius: 15px;
+            }
+            
+            .config-row {
+                flex-direction: column;
+            }
+            
+            .message {
+                max-width: 90%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h1>Azure AI Assistant</h1>
+            <div class="status-indicator" id="statusIndicator"></div>
+        </div>
+
+        <div class="config-section" id="configSection">
+            <div class="config-row">
+                <input type="text" id="endpointInput" class="config-input" placeholder="Azure AI Foundry Endpoint URL" />
+            </div>
+            <div class="config-row">
+                <input type="password" id="apiKeyInput" class="config-input" placeholder="API Key" />
+            </div>
+            <div class="config-row">
+                <input type="text" id="modelInput" class="config-input" placeholder="Model Name (e.g., gpt-4)" />
+                <button class="config-btn" onclick="saveConfig()">Simpan</button>
+            </div>
+            <button class="toggle-config" onclick="toggleConfig()">Sembunyikan Konfigurasi</button>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            <div class="message bot-message">
+                👋 Halo! Saya adalah AI Assistant yang terhubung dengan Azure AI Foundry. Silakan konfigurasi endpoint dan API key terlebih dahulu, lalu mulai chat dengan saya!
+            </div>
+        </div>
+
+        <div class="chat-input-container">
+            <textarea 
+                id="chatInput" 
+                class="chat-input" 
+                placeholder="Ketik pesan Anda di sini..."
+                rows="1"
+                onkeydown="handleKeyDown(event)"
+            ></textarea>
+            <button id="sendButton" class="send-button" onclick="sendMessage()">
+                Kirim
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Configuration management
+        let config = {
+            endpoint: '',
+            apiKey: '',
+            model: 'gpt-4'
+        };
+
+        let isConfigVisible = true;
+        let conversationHistory = [];
+
+        // Load config from memory on page load
+        function loadConfig() {
+            // In a real deployment, you might want to use environment variables
+            // For now, users need to input their credentials
+        }
+
+        function saveConfig() {
+            config.endpoint = document.getElementById('endpointInput').value.trim();
+            config.apiKey = document.getElementById('apiKeyInput').value.trim();
+            config.model = document.getElementById('modelInput').value.trim() || 'gpt-4';
+
+            if (config.endpoint && config.apiKey) {
+                updateStatusIndicator(true);
+                addMessage('Konfigurasi berhasil disimpan! Anda sekarang dapat mulai chatting.', 'bot');
+            } else {
+                updateStatusIndicator(false);
+                addMessage('Mohon lengkapi endpoint dan API key.', 'error');
+            }
+        }
+
+        function toggleConfig() {
+            const configSection = document.getElementById('configSection');
+            const toggleBtn = document.querySelector('.toggle-config');
+            
+            if (isConfigVisible) {
+                configSection.classList.add('config-hidden');
+                toggleBtn.textContent = 'Tampilkan Konfigurasi';
+                isConfigVisible = false;
+            } else {
+                configSection.classList.remove('config-hidden');
+                toggleBtn.textContent = 'Sembunyikan Konfigurasi';
+                isConfigVisible = true;
+            }
+        }
+
+        function updateStatusIndicator(isConnected) {
+            const indicator = document.getElementById('statusIndicator');
+            if (isConnected) {
+                indicator.style.backgroundColor = '#4CAF50';
+            } else {
+                indicator.style.backgroundColor = '#f44336';
+            }
+        }
+
+        // Chat functionality
+        function addMessage(content, type = 'user') {
+            const messagesContainer = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            
+            messageDiv.className = `message ${type}-message`;
+            
+            if (type === 'loading') {
+                messageDiv.innerHTML = '<span class="loading-dots">AI sedang mengetik</span>';
+            } else {
+                messageDiv.textContent = content;
+            }
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            return messageDiv;
+        }
+
+        function removeMessage(messageElement) {
+            if (messageElement && messageElement.parentNode) {
+                messageElement.parentNode.removeChild(messageElement);
+            }
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const sendButton = document.getElementById('sendButton');
+            const message = input.value.trim();
+
+            if (!message) return;
+
+            if (!config.endpoint || !config.apiKey) {
+                addMessage('Mohon konfigurasi endpoint dan API key terlebih dahulu.', 'error');
+                return;
+            }
+
+            // Add user message
+            addMessage(message, 'user');
+            conversationHistory.push({ role: 'user', content: message });
+
+            // Clear input and disable send button
+            input.value = '';
+            sendButton.disabled = true;
+            
+            // Show loading message
+            const loadingMessage = addMessage('', 'loading');
+
+            try {
+                const response = await callAzureAI(message);
+                
+                // Remove loading message
+                removeMessage(loadingMessage);
+                
+                // Add bot response
+                addMessage(response, 'bot');
+                conversationHistory.push({ role: 'assistant', content: response });
+                
+            } catch (error) {
+                // Remove loading message
+                removeMessage(loadingMessage);
+                
+                // Add error message
+                addMessage(`Error: ${error.message}`, 'error');
+                console.error('Azure AI Error:', error);
+            } finally {
+                sendButton.disabled = false;
+                input.focus();
+            }
+        }
+
+        async function callAzureAI(message) {
+            // Prepare the conversation history
+            const messages = [
+                {
+                    role: 'system',
+                    content: 'Anda adalah AI assistant yang membantu dan ramah. Jawab dalam bahasa Indonesia kecuali diminta sebaliknya.'
+                },
+                ...conversationHistory.slice(-10), // Keep last 10 messages for context
+                {
+                    role: 'user',
+                    content: message
+                }
+            ];
+
+            const requestBody = {
+                messages: messages,
+                max_tokens: 1000,
+                temperature: 0.7,
+                top_p: 0.9
+            };
+
+            const response = await fetch(`${config.endpoint}/openai/deployments/${config.model}/chat/completions?api-version=2024-02-15-preview`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'api-key': config.apiKey
+                },
+                body: JSON.stringify(requestBody)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            
+            if (data.choices && data.choices.length > 0) {
+                return data.choices[0].message.content;
+            } else {
+                throw new Error('Tidak ada response dari AI model');
+            }
+        }
+
+        function handleKeyDown(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
+        // Auto-resize textarea
+        document.getElementById('chatInput').addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+        });
+
+        // Initialize
+        loadConfig();
+        updateStatusIndicator(false);
+    </script>
+</body>
+</html>
